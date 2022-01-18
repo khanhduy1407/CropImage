@@ -1,0 +1,66 @@
+package tk.nkduy.cropimage.shape;
+
+import android.graphics.*;
+
+import tk.nkduy.cropimage.config.CropImageOverlayConfig;
+
+public class CropImageOvalShape extends CropImageShape {
+
+    private Path clipPath;
+
+    public CropImageOvalShape(CropImageOverlayConfig config) {
+        super(config);
+        clipPath = new Path();
+    }
+
+    @Override
+    protected void clearArea(Canvas canvas, RectF cropBounds, Paint clearPaint) {
+        canvas.drawOval(cropBounds, clearPaint);
+    }
+
+
+    @Override
+    protected void drawBorders(Canvas canvas, RectF cropBounds, Paint paint) {
+        canvas.drawOval(cropBounds, paint);
+        if (overlayConfig.isDynamicCrop()) {
+            canvas.drawRect(cropBounds, paint);
+        }
+    }
+
+    @Override
+    protected void drawGrid(Canvas canvas, RectF cropBounds, Paint paint) {
+        clipPath.rewind();
+        clipPath.addOval(cropBounds, Path.Direction.CW);
+
+        canvas.save();
+        canvas.clipPath(clipPath);
+        super.drawGrid(canvas, cropBounds, paint);
+        canvas.restore();
+    }
+
+    @Override
+    public CropImageShapeMask getMask() {
+        return new OvalShapeMask();
+    }
+
+    private static class OvalShapeMask implements CropImageShapeMask {
+        @Override
+        public Bitmap applyMaskTo(Bitmap croppedRegion) {
+            croppedRegion.setHasAlpha(true);
+
+            Paint maskPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            maskPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+
+            RectF ovalRect = new RectF(0, 0, croppedRegion.getWidth(), croppedRegion.getHeight());
+            Path maskShape = new Path();
+            //This is similar to ImageRect\Oval
+            maskShape.addRect(ovalRect, Path.Direction.CW);
+            maskShape.addOval(ovalRect, Path.Direction.CCW);
+
+            Canvas canvas = new Canvas(croppedRegion);
+            canvas.drawPath(maskShape, maskPaint);
+            return croppedRegion;
+        }
+    }
+}
+
